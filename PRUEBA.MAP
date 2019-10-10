@@ -1,0 +1,9 @@
+
+ Start  Stop   Length Name               Class
+
+ 00000H 000F2H 000F3H PRUEBA_TEXT        CODE
+ 00100H 001AAH 000ABH _DATA              DATA
+ 001B0H 005AFH 00400H STACK              STACK
+
+Program entry point at 0000:0000
+
