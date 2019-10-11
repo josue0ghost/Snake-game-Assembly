@@ -9,7 +9,8 @@
     mer1 DB 'No se puede regresar$'
     mer2 DB 'Fin de Juego$'
     mer3 DB 'Presione cualquier tecla para continuar...$'
-    
+    fin DB 00h
+
     ;cc
     ccX DB ?
     ccY DB ?
@@ -38,6 +39,9 @@ program proc far
     pantalla:
     call impresion_pantalla
     call leer_teclado
+
+    cmp fin, 01h        ; si pierde, termina el programa
+    jz fin_programa 
     jmp pantalla
 
     
@@ -52,8 +56,11 @@ fin_juego proc
     mov ah, 09h
     int 21h
 
+    mov fin, 01h
+
     call presskey
-    jmp fin_programa
+    
+    ret
 fin_juego endp
 
 impresion_pantalla proc
@@ -196,6 +203,8 @@ impresion_limites proc
 impresion_limites endp
 
 instrucciones proc
+    call limpiar
+
     xor dx, dx
     mov dl, offset minsj    ;imprime instrucciones
     mov ah, 09h
@@ -223,6 +232,10 @@ presskey proc
     mov dl, offset mer3        
     mov ah, 09h
     int 21h
+
+    mov ah, 08h
+    int 21h
+    ret
 presskey endp
 
 lineaH proc
