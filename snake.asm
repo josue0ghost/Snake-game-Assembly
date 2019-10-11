@@ -10,7 +10,10 @@
     mer2 DB 'Fin de Juego$'
     mer3 DB 'Presione cualquier tecla para continuar...$'
     fin DB 00h
-
+    
+    limX DB ?
+    limY DB ?
+    
     ;cc
     ccX DB ?
     ccY DB ?
@@ -98,24 +101,52 @@ leer_teclado proc
 
     mov_arriba:
     sub ccY, 01h
+    call verificar_lim
     ret
 
     mov_abajo:
     add ccY, 01h
+    call verificar_lim
     ret
 
     mov_izquierda:
     sub ccX, 01h
+    call verificar_lim
     ret
 
     mov_derecha:
     add ccX, 01h
+    call verificar_lim
     ret
 
     exit:
     call fin_juego
     ret
 leer_teclado endp
+
+verificar_lim proc
+    ;si esta Y o X en 0
+
+    cmp ccY, 00h
+    jz fuera_rango
+
+    cmp ccX, 00h
+    jz fuera_rango
+
+    mov bh, limY
+    cmp ccY, bh           ;renglon = impresion_limites
+    jz fuera_rango
+
+    mov bh, limX
+    cmp ccX, bh             ;columna = impresion_limites
+    jz fuera_rango
+
+    ret
+
+    fuera_rango:
+    call fin_juego
+    ret
+verificar_lim endp
 
 ingreso_datos proc
     ;ingreso de datos
@@ -166,7 +197,7 @@ ingreso_datos endp
 
 movCursor proc
     ;calcular el centro del tablero
-    mov bh, 0h
+    mov bh, 0h      ;pagina 0
     mov dl, ccX
     mov dh, ccY
     
@@ -204,6 +235,14 @@ impresion_limites endp
 
 instrucciones proc
     call limpiar
+
+    ;como ya no vamos a usar mpX y mpY los podemos cambiar jeje
+    mov bh, dimX             
+    mov limX, bh
+    add limX, 01h                 ;son los l?mites para snake
+    mov bh, dimY
+    mov limY, bh
+    add limY, 01h                 
 
     xor dx, dx
     mov dl, offset minsj    ;imprime instrucciones
