@@ -9,6 +9,7 @@
     mer1 DB 'No se puede regresar$'
     mer2 DB 'Fin de Juego$'
     mer3 DB 'Presione cualquier tecla para continuar...$'
+    mer4 DB 'No puede regresar$'
     fin DB 00h
     
     limX DB ?
@@ -30,6 +31,7 @@
     fruta DB 40h    ; @
     
     ;variables extra
+    movAnte DB 0
     regA DW 0
     regB DW 0
     regC DW 0
@@ -73,6 +75,20 @@ fin_juego proc
     ret
 fin_juego endp
 
+mostrarRegreso proc
+    CALL guardar
+    CALL clean
+    
+    CALL limpiar 
+    MOV DL , offset mer4
+    MOV AH , 09h
+    INT 21h
+    CALL presskey
+    
+    CALL reset
+    RET
+mostrarRegreso endp
+
 impresion_pantalla proc
     call impresion_limites
     ;call movCursor
@@ -88,7 +104,9 @@ impresion_pantalla endp
 leer_teclado proc
     mov ah, 08h             ;lee teclado
     int 21h
-
+    
+    MOV AH , movAnte        ;mueve anterior a un registro
+    
     cmp al, arriba
     jz mov_arriba
     
@@ -108,36 +126,52 @@ leer_teclado proc
     ret
 
     mov_arriba:
+    CMP AH , abajo
+    JZ regreso
     sub ccY, 01h
     CALL moverPos ;Ver linea 406
     CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
+    MOV movAnte , AL
     ret
 
     mov_abajo:
+    CMP AH , arriba
+    JZ regreso
     add ccY, 01h
     CALL moverPos ;Ver linea 406
     CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
+    MOV movAnte , AL
     ret
 
     mov_izquierda:
+    CMP AH , derecha
+    JZ regreso
     sub ccX, 01h
     CALL moverPos ;Ver linea 406
     CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
+    MOV movAnte , AL
     ret
 
     mov_derecha:
+    CMP AH , izquierda
+    JZ regreso
     add ccX, 01h
     CALL moverPos ;Ver linea 406
     CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
+    MOV movAnte , AL
     ret
 
     exit:
     call fin_juego
     ret
+    
+    regreso:
+    CALL mostrarRegreso
+    RET
 leer_teclado endp
 
 verificar_cuerpo proc
