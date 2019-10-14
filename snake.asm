@@ -24,7 +24,11 @@
     ;punteo
     spunteo DB 'Puntos: $'
     score DB 00h
-
+    
+    diez DB 10d
+    residuo DB ?
+    cociente DB ?
+    
     ;movimientos
     arriba DB 77h       ;w
     abajo DB 73h        ;s
@@ -78,7 +82,36 @@ fin_juego proc
     int 21h
 
     mov fin, 01h        ;bool gameover = true
-
+    
+    mov dl, 0dh         ;fin y salto de linea
+    mov ah, 02h
+    int 21h
+    mov dl, 0ah
+    int 21h         
+    
+    xor ax, ax
+    xor dx, dx
+    
+    mov dl, offset spunteo     ;imprime Punteo:
+    mov ah, 09h
+    int 21h
+    
+    xor ax, ax
+    mov dl, score
+    mov al, dl
+    div diez                ;divide entre 10 para obtener el numero con 2 digitos
+    
+    mov residuo, al         ;guardo los resultados
+    mov cociente, ah
+    add residuo, 30h        ;obtengo ascii
+    add cociente, 30h   
+    
+    mov dl, residuo
+    mov ah, 02h
+    int 21h             ;imprime puntaje
+    mov dl, cociente
+    int 21h             ;imprime puntaje
+    
     call presskey
     
     ret
@@ -161,7 +194,7 @@ movFruta endp
 impresion_pantalla proc
     call impresion_limites
     call imprimir_fruta
-    ;call imprimir_score
+    call imprimir_score
 
     call movCursor
 
@@ -248,22 +281,39 @@ verificar_lim proc
 verificar_lim endp
 
 imprimir_score proc
+    xor ax, ax
+    xor dx, dx
+    
     mov dl, 00h
     mov dh, dimY
-    add dh, 01h         ;para colocar el cursor abajo del todo
+    add dh, 02h         ;para colocar el cursor abajo del todo
 
     mov ah, 02h         ;coloca cursor
     int 10h    
-
-    mov dl, spunteo     ;imprime "Punteo: "
+    
+    xor ax, ax
+    xor dx, dx
+    
+    mov dl, offset spunteo     ;imprime Punteo:
     mov ah, 09h
     int 21h
 
+    xor ax, ax
     mov dl, score
-    add dl, 30h         ;obtiene el ascii
+    mov al, dl
+    div diez                ;divide entre 10 para obtener el numero con 2 digitos
+    
+    mov residuo, al         ;guardo los resultados
+    mov cociente, ah
+    add residuo, 30h        ;obtengo ascii
+    add cociente, 30h   
+    
+    mov dl, residuo
     mov ah, 02h
     int 21h             ;imprime puntaje
-
+    mov dl, cociente
+    int 21h             ;imprime puntaje
+    
     ret
 imprimir_score endp
 
