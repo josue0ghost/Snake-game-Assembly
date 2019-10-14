@@ -21,7 +21,8 @@
     ;coordenadas de fruta
     cmX DB ?
     cmY DB ?
-    
+    enF DB 00h
+
     ;punteo
     spunteo DB 'Puntos: $'
     score DB 00h
@@ -154,6 +155,20 @@ imprimir_fruta proc
     ret
 imprimir_fruta endp
 
+mostrarRegreso proc
+    CALL guardar
+    CALL clean
+    
+    CALL limpiar 
+    MOV DL , offset mer4
+    MOV AH , 09h
+    INT 21h
+    CALL presskey
+    
+    CALL reset
+    RET
+mostrarRegreso endp
+
 generar_fruta proc
     generarX:
     mov ah, 2ch         ;obtiene la hora
@@ -187,6 +202,30 @@ generar_fruta proc
     
     mov cmY, dl         ;asigna a cmY          
     
+    ;si la fruta no cae encima de su cuerpo
+    CALL guardar
+    CALL clean
+    MOV CL , posSiz
+    MOV AH, cmX
+    MOV AL, cmY
+    MOV SI, 0
+    verFrutaCuerpo:
+    CMP SI , CX
+    JZ frutaCorrecta
+    MOV BH , posLis[SI]
+    INC SI
+    MOV BL , posLis[SI]
+    INC SI
+    CMP AX , BX
+    JZ frutaSobreCuerpo
+    JMP verFrutaCuerpo
+
+    frutaSobreCuerpo:
+    CALL reset
+    JMP generarX
+
+    frutaCorrecta:
+    CALL reset
     ret
 generar_fruta endp
 
@@ -205,7 +244,7 @@ impresion_pantalla proc
     call imprimir_fruta
     call imprimir_score
 
-    call movCursor
+    CALL imprimirSer
 
     mov dl, cuerpo
     mov ah, 02h
@@ -214,10 +253,17 @@ impresion_pantalla proc
     ret
 impresion_pantalla endp
 
+moverSerpiente proc
+    CALL verificar_cuerpo ;Ver linea 143
+    call verificar_lim
+    MOV movAnte, AL
+
+    ret
+moverSerpiente endp
+
 leer_teclado proc
-    mov ah, 08h             ;lee teclado
+    mov ah, 08h             ;lee teclado guardando el ascii en AL
     int 21h
-    
     MOV AH , movAnte        ;mueve anterior a un registro
     
     cmp al, arriba
@@ -233,59 +279,119 @@ leer_teclado proc
     jz mov_derecha
 
     cmp al, salir
-    jz exit
-
-    ; si no es ninguno no hace nada
-    ret
+    jz exit               
+    ret                             ; si no es ninguno no hace nada
 
     mov_arriba:
     CMP AH , abajo
-    JZ regreso
+    JZ regreso2
     sub ccY, 01h
+    call verificar_fruta
+    cmp enF, 01h  
+    jz insAR
     CALL moverPos ;Ver linea 406
-    CALL verificar_cuerpo ;Ver linea 143
-    call verificar_lim
-    MOV movAnte , AL
+    call moverSerpiente
+    ret 
+    insAR:
+    mov enF, 00h
+    CALL ingresarPos ;Ver linea 406
+    call moverSerpiente
     ret
+
+    mov_derecha:
+    jmp mov_derecha2
 
     mov_abajo:
     CMP AH , arriba
     JZ regreso
     add ccY, 01h
+    call verificar_fruta
+    cmp enF, 01h
+    jz insAB
     CALL moverPos ;Ver linea 406
-    CALL verificar_cuerpo ;Ver linea 143
-    call verificar_lim
-    MOV movAnte , AL
+    call moverSerpiente
     ret
+    insAB:
+    mov enF, 00h
+    CALL ingresarPos ;Ver linea 406
+    call moverSerpiente
+    ret
+
+    exit:
+    jmp exit2
+    
+    regreso2:
+    jmp regreso
 
     mov_izquierda:
     CMP AH , derecha
     JZ regreso
     sub ccX, 01h
+    call verificar_fruta
+    cmp enF, 01h
+    jz insIZ
     CALL moverPos ;Ver linea 406
-    CALL verificar_cuerpo ;Ver linea 143
-    call verificar_lim
-    MOV movAnte , AL
+    call moverSerpiente
+    ret
+    insIZ:
+    mov enF, 00h
+    CALL ingresarPos ;Ver linea 406
+    call moverSerpiente
     ret
 
-    mov_derecha:
+    mov_derecha2:
     CMP AH , izquierda
     JZ regreso
     add ccX, 01h
-    CALL moverPos ;Ver linea 406
-    CALL verificar_cuerpo ;Ver linea 143
-    call verificar_lim
-    MOV movAnte , AL
+    call verificar_fruta
+    cmp enF, 01h
+    jz insDE
+    call moverPos ;Ver linea 406
+    call moverSerpiente
     ret
-
-    exit:
-    call fin_juego
+    insDE:
+    mov enF, 00h
+    call ingresarPos ;Ver linea 406
+    call moverSerpiente
     ret
     
+    exit2:
+    call fin_juego
+    ret
+
     regreso:
     CALL mostrarRegreso
     RET
 leer_teclado endp
+
+ver_cuerpo_fruta proc
+    ;si la fruta no cae encima de su cuerpo
+    CALL guardar
+    CALL clean
+    MOV CL , posSiz
+    MOV AH, cmX
+    MOV AL, cmY
+    MOV SI, 0
+    verCicF:
+    CMP SI , CX
+    JZ fin_verCF
+    MOV BH , posLis[SI]
+    INC SI
+    MOV BL , posLis[SI]
+    INC SI
+    CMP AX , BX
+    JZ sobreCuerpoF
+    JMP verCicF
+    
+    sobreCuerpoF:
+    CALL reset
+    CALL fin_juego
+    ret
+    
+    fin_verCF:
+    CALL reset
+    ret
+ver_cuerpo_fruta endp   
 
 verificar_cuerpo proc
     ;si se mueve encima de su cuerpo
@@ -396,6 +502,7 @@ verificar_fruta proc
     ret                 ;si no esta en las mismas xx de X, hace nada
 
     sumar_score:
+    mov enF, 01h        ;bandera de comer fruta
     call puntos
     call generar_fruta
     ret
