@@ -9,6 +9,7 @@
     mer1 DB 'No se puede regresar$'
     mer2 DB 'Fin de Juego$'
     mer3 DB 'Presione cualquier tecla para continuar...$'
+    mer4 DB 'No puede regresar$'
     fin DB 00h
     
     limX DB ?
@@ -35,11 +36,19 @@
     izquierda DB 61h    ;a
     derecha DB  64h     ;d
     salir DB 78h        ;x
-
     ; caracteres
-    barrera DB 178d     ; #
-    cuerpo DB 4fh       ; O
-    fruta DB 40h        ; @
+    barrera DB 178d  ; #
+    cuerpo DB 4fh   ; O
+    fruta DB 40h    ; @
+    
+    ;variables extra
+    movAnte DB 0
+    regA DW 0
+    regB DW 0
+    regC DW 0
+    regD DW 0
+    posSiz DB 0
+    posLis DB ? ;varible de lista
 .code
 program proc far
     mov ax, @data
@@ -208,8 +217,10 @@ impresion_pantalla endp
 leer_teclado proc
     mov ah, 08h             ;lee teclado
     int 21h
-
-    cmp al, arriba          
+    
+    MOV AH , movAnte        ;mueve anterior a un registro
+    
+    cmp al, arriba
     jz mov_arriba
     
     cmp al, abajo
@@ -228,33 +239,82 @@ leer_teclado proc
     ret
 
     mov_arriba:
-    sub ccY, 01h        ;para subir se debe restar debido a c?mo est? definida la matriz de consola
+    CMP AH , abajo
+    JZ regreso
+    sub ccY, 01h
+    CALL moverPos ;Ver linea 406
+    CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
-    call verificar_fruta
+    MOV movAnte , AL
     ret
 
     mov_abajo:
-    add ccY, 01h        ;para bajar se debe sumar debido a c?mo est? definida la matriz de consola
+    CMP AH , arriba
+    JZ regreso
+    add ccY, 01h
+    CALL moverPos ;Ver linea 406
+    CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
-    call verificar_fruta
+    MOV movAnte , AL
     ret
 
     mov_izquierda:
-    sub ccX, 01h        ;para ir a la izq se debe restar debido a c?mo est? definida la matriz de consola
+    CMP AH , derecha
+    JZ regreso
+    sub ccX, 01h
+    CALL moverPos ;Ver linea 406
+    CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
-    call verificar_fruta
+    MOV movAnte , AL
     ret
 
     mov_derecha:
-    add ccX, 01h        ;para ir a la der se debe sumar debido a c?mo est? definida la matriz de consola
+    CMP AH , izquierda
+    JZ regreso
+    add ccX, 01h
+    CALL moverPos ;Ver linea 406
+    CALL verificar_cuerpo ;Ver linea 143
     call verificar_lim
-    call verificar_fruta
+    MOV movAnte , AL
     ret
 
     exit:
     call fin_juego
     ret
+    
+    regreso:
+    CALL mostrarRegreso
+    RET
 leer_teclado endp
+
+verificar_cuerpo proc
+    ;si se mueve encima de su cuerpo
+    CALL guardar
+    CALL clean
+    MOV CL , posSiz
+    MOV AH, posLis[0]
+    MOV AL, posLis[1]
+    MOV SI, 2
+    verCic:
+    CMP SI , CX
+    JZ fin_verC
+    MOV BH , posLis[SI]
+    INC SI
+    MOV BL , posLis[SI]
+    INC SI
+    CMP AX , BX
+    JZ sobreCuerpo
+    JMP verCic
+    
+    sobreCuerpo:
+    CALL reset
+    CALL fin_juego
+    ret
+    
+    fin_verC:
+    CALL reset
+    ret
+verificar_cuerpo endp    
 
 verificar_lim proc
     ;si esta Y o X en 0
@@ -384,9 +444,24 @@ ingreso_datos proc
     int 21h
     mov dl, 0ah
     int 21h
-
+    
+    CALL serPrueba
+    CALL ingresarPos
     ret
 ingreso_datos endp
+
+serPrueba proc ;crea una sepiente inicial de 5 segmentos, ver linea 240
+    SUB ccX , 4
+    CALL ingresarPos ;Ver Linea 441
+    INC ccX
+    CALL ingresarPos ;Ver Linea 441
+    INC ccX
+    CALL ingresarPos ;Ver Linea 441
+    INC ccX
+    CALL ingresarPos ;Ver Linea 441
+    INC ccX
+    RET
+serPrueba endp
 
 movCursor proc
     mov bh, 0h      ;pagina 0
@@ -486,6 +561,90 @@ lineaV proc
     
     ret
 lineaV endp
- 
+
+imprimirSer proc ;imprime serpiente en pantalla
+    CALL guardar
+    CALL clean
+    MOV CL , posSiz
+    MOV SI , 0
+    ciclo2:
+    MOV DL , posLis[SI]
+    INC SI
+    MOV DH , posLis[SI]
+    INC SI
+    
+    MOV BH ,0
+    MOV AH , 02h
+    INT 10h
+    
+    MOV DL , cuerpo
+    MOV AH , 02h
+    INT 21h 
+    
+    LOOP ciclo2
+    CALL reset
+    RET
+imprimirSer endp
+moverPos proc ;mueve las posiciones de la sepiente
+    CALL guardar
+    CALL clean
+    
+    MOV BL , posSiz
+    MOV DI , BX
+    MOV SI , BX
+    SUB SI , 2
+    moverCic: ; Ciclo que mueve las posiciones
+    CMP SI , 0
+    JZ moverCicFin
+    
+    DEC SI
+    DEC DI
+    MOV AL , posLis[SI]
+    MOV posLis[DI] , AL
+    
+    DEC SI
+    DEC DI
+    MOV AL , posLis[SI]
+    MOV posLis[DI] , AL
+    
+    JMP moverCic
+    moverCicFin: ; coloca los valore nuevos de la cabeza
+    DEC DI
+    MOV AL , ccY
+    MOV posLis[DI] , AL
+    
+    DEC DI
+    MOV AL , ccX
+    MOV posLis[DI] , AL
+    
+    CALL reset
+    RET
+moverPos endp
+ingresarPos proc ;inserta 2 posiciones m?s a la lista
+    ADD posSiz , 2
+    CALL moverPos
+    RET
+ingresarPos endp
+guardar proc ; guarda los registros para evitar perder datos
+    MOV regA , AX
+    MOV regB , BX
+    MOV regC , CX
+    MOV regD , DX
+    RET
+guardar endp
+reset proc ; inserta los valores guardados en los registros
+    MOV AX , regA
+    MOV BX , regB
+    MOV CX , regC
+    MOV DX , regD
+    RET
+reset endp
+clean proc ;limpia los registros
+    XOR AX ,AX
+    XOR BX ,BX
+    XOR CX ,CX
+    XOR DX ,DX
+    RET
+clean endp
 program endp
 end program
