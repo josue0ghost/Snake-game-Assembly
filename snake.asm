@@ -14,10 +14,17 @@
     limX DB ?
     limY DB ?
     
-    ;cc
+    ;coordenadas de cabeza
     ccX DB ?
     ccY DB ?
+    ;coordenadas de fruta
+    cmX DB ?
+    cmY DB ?
     
+    ;punteo
+    spunteo DB 'Puntos: $'
+    score DB 00h
+
     ;movimientos
     arriba DB 77h       ;w
     abajo DB 73h        ;s
@@ -26,9 +33,9 @@
     salir DB 78h        ;x
 
     ; caracteres
-    barrera DB 178d  ; #
-    cuerpo DB 4fh   ; O
-    fruta DB 40h    ; @
+    barrera DB 178d     ; #
+    cuerpo DB 4fh       ; O
+    fruta DB 40h        ; @
 .code
 program proc far
     mov ax, @data
@@ -38,6 +45,7 @@ program proc far
 
     call ingreso_datos    
     call instrucciones
+    call generar_fruta
 
     pantalla:
     call impresion_pantalla
@@ -52,28 +60,115 @@ program proc far
     mov ah, 4ch
     int 21h
 
+limpiar proc
+    mov ax, 0003h   ;limpia la pantalla
+    int 10h
+
+    ret
+limpiar endp
+
 fin_juego proc
     call limpiar
-
+    
+    xor ax, ax
+    xor dx, dx
+    
     mov dl, offset mer2
     mov ah, 09h
     int 21h
 
-    mov fin, 01h
+    mov fin, 01h        ;bool gameover = true
 
     call presskey
     
     ret
 fin_juego endp
 
+presskey proc
+    xor dx, dx
+    mov dl, 0dh             ;fin y salto de linea
+    mov ah, 02h          
+    int 21h
+    mov dl, 0ah
+    int 21h
+
+    mov dl, offset mer3        
+    mov ah, 09h
+    int 21h
+
+    mov ah, 08h             ;interrupcion que espera una
+    int 21h                 ;entrada de teclado
+    
+    ret
+presskey endp
+
+imprimir_fruta proc
+    call movFruta
+
+    mov dl, fruta     ;imprime la fruta
+    mov ah, 02h
+    int 21h 
+
+    ret
+imprimir_fruta endp
+
+generar_fruta proc
+    generarX:
+    mov ah, 2ch         ;obtiene la hora
+    int 21h
+    
+    ;ch->horas; cl->minutos; dh->segundos; dl->milisegundos
+    
+    cmp dl, 0h          ;si milisegundos es igual a 0 lo vuelve a generar
+    jz generarX
+    
+    mov bh, limX
+    dec bh
+    cmp bh, dl          ;si milisegundos es mayor a los limites lo vuelve a generar
+    js generarX
+
+    mov cmX, dl         ;asigna a cmX
+
+    generarY:
+    mov ah, 2ch         ;obtiene la hora
+    int 21h
+
+    ;ch->horas; cl->minutos; dh->segundos; dl->milisegundos
+
+    cmp dl, 0h          ;si milisegundos es igual a 0 lo vuelve a generar
+    jz generarY
+    
+    mov bh, limY
+    dec bh
+    cmp bh, dl          ;si segundos es mayor a los limites lo vuelve a generar
+    js generarY
+    
+    mov cmY, dl         ;asigna a cmY          
+    
+    ret
+generar_fruta endp
+
+movFruta proc
+    mov bh, 0h      ;pagina 0
+    mov dl, cmX     ;en dl se guardan las columnas
+    mov dh, cmY     ;en dh se guardan los renglones
+    
+    mov ah, 02h     ;coloca cursor
+    int 10h    
+    ret
+movFruta endp 
+
 impresion_pantalla proc
     call impresion_limites
+    call imprimir_fruta
+    ;call imprimir_score
+
     call movCursor
 
     mov dl, cuerpo
     mov ah, 02h
     int 21h
-
+    
     ret
 impresion_pantalla endp
 
@@ -81,7 +176,7 @@ leer_teclado proc
     mov ah, 08h             ;lee teclado
     int 21h
 
-    cmp al, arriba
+    cmp al, arriba          
     jz mov_arriba
     
     cmp al, abajo
@@ -100,23 +195,27 @@ leer_teclado proc
     ret
 
     mov_arriba:
-    sub ccY, 01h
+    sub ccY, 01h        ;para subir se debe restar debido a c?mo est? definida la matriz de consola
     call verificar_lim
+    call verificar_fruta
     ret
 
     mov_abajo:
-    add ccY, 01h
+    add ccY, 01h        ;para bajar se debe sumar debido a c?mo est? definida la matriz de consola
     call verificar_lim
+    call verificar_fruta
     ret
 
     mov_izquierda:
-    sub ccX, 01h
+    sub ccX, 01h        ;para ir a la izq se debe restar debido a c?mo est? definida la matriz de consola
     call verificar_lim
+    call verificar_fruta
     ret
 
     mov_derecha:
-    add ccX, 01h
+    add ccX, 01h        ;para ir a la der se debe sumar debido a c?mo est? definida la matriz de consola
     call verificar_lim
+    call verificar_fruta
     ret
 
     exit:
@@ -127,26 +226,70 @@ leer_teclado endp
 verificar_lim proc
     ;si esta Y o X en 0
 
-    cmp ccY, 00h
+    cmp ccY, 00h        ;para ver si topa con la parede superior
     jz fuera_rango
 
-    cmp ccX, 00h
+    cmp ccX, 00h        ;para ver si topa con la parede izquierda
     jz fuera_rango
 
-    mov bh, limY
-    cmp ccY, bh           ;renglon = impresion_limites
+    mov bh, limY        ;para ver si topa con la pared derecha
+    cmp ccY, bh         ;renglon = impresion_limites
     jz fuera_rango
 
-    mov bh, limX
-    cmp ccX, bh             ;columna = impresion_limites
+    mov bh, limX        ;para ver si topa con la pared inferior
+    cmp ccX, bh         ;columna = impresion_limites
     jz fuera_rango
 
-    ret
+    ret                 ;si no topa con nada, hace nada
 
     fuera_rango:
     call fin_juego
     ret
 verificar_lim endp
+
+imprimir_score proc
+    mov dl, 00h
+    mov dh, dimY
+    add dh, 01h         ;para colocar el cursor abajo del todo
+
+    mov ah, 02h         ;coloca cursor
+    int 10h    
+
+    mov dl, spunteo     ;imprime "Punteo: "
+    mov ah, 09h
+    int 21h
+
+    mov dl, score
+    add dl, 30h         ;obtiene el ascii
+    mov ah, 02h
+    int 21h             ;imprime puntaje
+
+    ret
+imprimir_score endp
+
+puntos proc
+    add score, 01h           ;incrementa en 1 el score
+    ret
+puntos endp
+
+verificar_fruta proc
+    mov bh, cmY
+    cmp ccY, bh         ;para ver si encuentra fruta en Y
+    jz comp_X
+    ret                 ;si no esta en las mismas cc de Y hace nada
+
+    comp_X:
+    mov bh, cmX
+    cmp ccX, bh         ;para ver si encuentra fruta en X
+    jz sumar_score
+
+    ret                 ;si no esta en las mismas xx de X, hace nada
+
+    sumar_score:
+    call puntos
+    call generar_fruta
+    ret
+verificar_fruta endp
 
 ingreso_datos proc
     ;ingreso de datos
@@ -196,50 +339,41 @@ ingreso_datos proc
 ingreso_datos endp
 
 movCursor proc
-    ;calcular el centro del tablero
     mov bh, 0h      ;pagina 0
-    mov dl, ccX
-    mov dh, ccY
+    mov dl, ccX     ;en dl se guardan las columnas
+    mov dh, ccY     ;en dh se guardan los renglones
     
     mov ah, 02h     ;coloca cursor
     int 10h    
     ret
 movCursor endp    
 
-limpiar proc
-    mov ax, 0003h   ;limpia la pantalla
-    int 10h
-
-    ret
-limpiar endp
-
 impresion_limites proc
     call limpiar
-    call lineaH
+    call lineaH     ;imprime linea horizontal
     
-    mov dl, 0dh
+    mov dl, 0dh     ;fin y salto de linea
     mov ah, 02h
     int 21h
     mov dl, 0ah
     int 21h
     
-    mov bl, dimY
+    mov bl, dimY    ;bl es nuestro contador porque cl ya est? siendo usado en lineaV
     printVertical:
-    call lineaV
-    dec bl
+    call lineaV     ;imprime varias veces los limites de los lados
+    dec bl          ;decrementa el contador
     jnz printVertical
     
-    call lineaH
+    call lineaH     ;imprime la linea inferior
     ret
 impresion_limites endp
 
 instrucciones proc
     call limpiar
 
-    ;como ya no vamos a usar mpX y mpY los podemos cambiar jeje
     mov bh, dimX             
     mov limX, bh
-    add limX, 01h                 ;son los l?mites para snake
+    add limX, 01h           ;son los limites para snake
     mov bh, dimY
     mov limY, bh
     add limY, 01h                 
@@ -249,7 +383,7 @@ instrucciones proc
     mov ah, 09h
     int 21h
     
-    mov dl, 0dh         ;fin y salto de linea
+    mov dl, 0dh             ;fin y salto de linea
     mov ah, 02h
     int 21h
     mov dl, 0ah
@@ -259,23 +393,6 @@ instrucciones proc
 
     ret
 instrucciones endp
-
-presskey proc
-    xor dx, dx
-    mov dl, 0dh             ;fin y salto de linea
-    mov ah, 02h
-    int 21h
-    mov dl, 0ah
-    int 21h
-
-    mov dl, offset mer3        
-    mov ah, 09h
-    int 21h
-
-    mov ah, 08h
-    int 21h
-    ret
-presskey endp
 
 lineaH proc
     xor cx, cx
