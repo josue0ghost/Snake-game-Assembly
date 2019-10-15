@@ -60,7 +60,8 @@ program proc far
     call ingreso_datos    
     call instrucciones
     call generar_fruta
-
+    call impresion_limites
+    
     pantalla:
     call impresion_pantalla
     call leer_teclado
@@ -239,8 +240,42 @@ movFruta proc
     ret
 movFruta endp 
 
+reset_campo proc
+    mov bh, 0h
+    mov dl, 01h     ;columnas
+    mov dh, 01h     ;renglon
+    
+    mov ah, 02h     ;colocar cursor en (1,1)
+    int 10h
+    
+    xor cx, cx
+    mov cl, limY
+    dec cl          ;cl = limY - 1
+    imp_espacios:
+    mov bh, limX
+    dec bh          ;bh = limX - 1
+    
+    imp_esp2:
+    
+    mov dl, 32d     ;espacio
+    mov ah, 02h
+    int 21h
+    
+    dec bh
+    jnz imp_esp2
+    
+    mov dl, 01h     ;columna 1
+    inc dh          ;dh + 1
+    int 10h         ;mueve cursor
+    
+    loop imp_espacios
+    
+    
+    ret
+reset_campo endp
+
 impresion_pantalla proc
-    call impresion_limites
+    call reset_campo
     call imprimir_fruta
     call imprimir_score
 
