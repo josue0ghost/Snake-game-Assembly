@@ -39,7 +39,7 @@
     salir DB 78h        ;x
     ; caracteres
     barrera DB 178d  ; #
-    cuerpo DB 4fh   ; O
+    cuerpo DB 02h;4fh   ; O
     fruta DB 40h    ; @
     
     ;variables extra
@@ -245,10 +245,11 @@ impresion_pantalla proc
     call imprimir_score
 
     CALL imprimirSer
-
-    mov dl, cuerpo
-    mov ah, 02h
-    int 21h
+    
+    call killbug
+    ;mov dl, cuerpo
+    ;mov ah, 02h
+    ;int 21h
     
     ret
 impresion_pantalla endp
@@ -552,7 +553,7 @@ ingreso_datos proc
     mov dl, 0ah
     int 21h
     
-    CALL serPrueba
+    ;CALL serPrueba
     CALL ingresarPos
     ret
 ingreso_datos endp
@@ -753,5 +754,26 @@ clean proc ;limpia los registros
     XOR DX ,DX
     RET
 clean endp
+killbug proc
+    call guardar
+    call clean
+    
+    mov bh, 0h      ;pagina 0
+    mov dl, 0     ;en dl se guardan las columnas
+    mov dh, 0     ;en dh se guardan los renglones
+    
+    mov ah, 02h     ;coloca cursor
+    int 10h
+    
+    mov dl, barrera
+    mov ah, 02h
+    int 21h
+    mov dl, barrera
+    mov ah, 02h
+    int 21h
+    
+    call reset
+    RET
+killbug endp
 program endp
 end program
