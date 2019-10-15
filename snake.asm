@@ -394,6 +394,8 @@ leer_teclado proc
 
     regreso:
     CALL mostrarRegreso             ;mensaje de que no puede regresar
+    call limpiar
+    call impresion_limites
     RET
 leer_teclado endp
 
@@ -587,6 +589,7 @@ ingreso_datos proc
     
     ;CALL serPrueba
     CALL ingresarPos
+    call presskey
     ret
 ingreso_datos endp
 
