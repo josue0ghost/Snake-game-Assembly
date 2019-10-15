@@ -10,9 +10,9 @@
     mer2 DB 'Fin de Juego$'
     mer3 DB 'Presione cualquier tecla para continuar...$'
     mer4 DB 'No puede regresar$'
-    fin DB 00h
+    fin DB 00h              ;booleano para fin de juego
     
-    limX DB ?
+    limX DB ?               ;limites de la matriz
     limY DB ?
     
     ;coordenadas de cabeza
@@ -21,7 +21,7 @@
     ;coordenadas de fruta
     cmX DB ?
     cmY DB ?
-    enF DB 00h
+    enF DB 00h              ;bool para ver si come fruta
 
     ;punteo
     spunteo DB 'Puntos: $'
@@ -38,18 +38,18 @@
     derecha DB  64h     ;d
     salir DB 78h        ;x
     ; caracteres
-    barrera DB 178d  ; #
-    cuerpo DB 02h;4fh   ; O
-    fruta DB 40h    ; @
+    barrera DB 178d     ; ?
+    cuerpo DB 02h       ; ?
+    fruta DB 40h        ; @
     
     ;variables extra
-    movAnte DB 0
+    movAnte DB 0        ;movimiento anterior
     regA DW 0
     regB DW 0
     regC DW 0
     regD DW 0
-    posSiz DB 0
-    posLis DB ? ;varible de lista
+    posSiz DB 0         ;tamano de lista
+    posLis DB ?         ;varible de lista
 .code
 program proc far
     mov ax, @data
@@ -146,9 +146,9 @@ presskey proc
 presskey endp
 
 imprimir_fruta proc
-    call movFruta
+    call movFruta           ;mueve el cursor para imprimir la fruta
 
-    mov dl, fruta     ;imprime la fruta
+    mov dl, fruta           ;imprime la fruta
     mov ah, 02h
     int 21h 
 
@@ -160,8 +160,8 @@ mostrarRegreso proc
     CALL clean
     
     CALL limpiar 
-    MOV DL , offset mer4
-    MOV AH , 09h
+    MOV DL , offset mer4    ;muestra mensaje de error cuando el jugador
+    MOV AH , 09h            ;intenta mover de regreso la serpiente
     INT 21h
     CALL presskey
     
@@ -206,7 +206,7 @@ generar_fruta proc
     CALL guardar
     CALL clean
     MOV CL , posSiz
-    MOV AH, cmX
+    MOV AH, cmX         ;coordenadas de la fruta
     MOV AL, cmY
     MOV SI, 0
     verFrutaCuerpo:
@@ -244,19 +244,16 @@ impresion_pantalla proc
     call imprimir_fruta
     call imprimir_score
 
-    CALL imprimirSer
+    CALL imprimirSer    ;imprime serpiente
     
-    call killbug
-    ;mov dl, cuerpo
-    ;mov ah, 02h
-    ;int 21h
+    call killbug        ;correccion de error menor
     
     ret
 impresion_pantalla endp
 
 moverSerpiente proc
-    CALL verificar_cuerpo ;Ver linea 143
-    call verificar_lim
+    CALL verificar_cuerpo   ;ver linea 394
+    call verificar_lim      ;ve si toca los limites de la matriz
     MOV movAnte, AL
 
     ret
@@ -284,84 +281,84 @@ leer_teclado proc
     ret                             ; si no es ninguno no hace nada
 
     mov_arriba:
-    CMP AH , abajo
-    JZ regreso2
-    sub ccY, 01h
-    call verificar_fruta
-    cmp enF, 01h  
-    jz insAR
-    CALL moverPos ;Ver linea 406
+    CMP AH , abajo                  ;no puede regresar
+    JZ regreso2                     ;salto intermedio
+    sub ccY, 01h                    ;para subir, debe restar Y
+    call verificar_fruta            ;verifica si come una fruta
+    cmp enF, 01h                    ;bool de fruta comida
+    jz insAR                        ;insertar arriba
+    CALL moverPos                   ;mueve las posiciones de la serpiente
     call moverSerpiente
     ret 
-    insAR:
+    insAR:                          
     mov enF, 00h
-    CALL ingresarPos ;Ver linea 406
+    CALL ingresarPos                ;aumenta el tamano de la serpiete
     call moverSerpiente
     ret
 
     mov_derecha:
-    jmp mov_derecha2
+    jmp mov_derecha2                ;salto intermedio
 
     mov_abajo:
-    CMP AH , arriba
+    CMP AH , arriba                 ;no puede regresar
     JZ regreso
-    add ccY, 01h
-    call verificar_fruta
-    cmp enF, 01h
-    jz insAB
-    CALL moverPos ;Ver linea 406
+    add ccY, 01h                    ;para bajar, debe sumar Y
+    call verificar_fruta            ;verifica si come una fruta
+    cmp enF, 01h                    ;bool de fruta comida
+    jz insAB                        ;insertar abajo
+    CALL moverPos                   
     call moverSerpiente
     ret
     insAB:
     mov enF, 00h
-    CALL ingresarPos ;Ver linea 406
+    CALL ingresarPos                
     call moverSerpiente
     ret
 
-    exit:
-    jmp exit2
+    exit:               
+    jmp exit2                       ;salto intermedio
     
     regreso2:
-    jmp regreso
+    jmp regreso                     ;salto intermedio
 
     mov_izquierda:
-    CMP AH , derecha
+    CMP AH , derecha                ;no puede regresar
     JZ regreso
-    sub ccX, 01h
-    call verificar_fruta
-    cmp enF, 01h
-    jz insIZ
-    CALL moverPos ;Ver linea 406
+    sub ccX, 01h                    ;para moverse a la izquierda debe restar X
+    call verificar_fruta            ;verifica si come fruta
+    cmp enF, 01h                    ;bool de fruta comida
+    jz insIZ                        ;insertar a la izquierda
+    CALL moverPos 
     call moverSerpiente
     ret
     insIZ:
     mov enF, 00h
-    CALL ingresarPos ;Ver linea 406
+    CALL ingresarPos 
     call moverSerpiente
     ret
 
     mov_derecha2:
-    CMP AH , izquierda
+    CMP AH , izquierda              ;no puede regresar
     JZ regreso
-    add ccX, 01h
-    call verificar_fruta
-    cmp enF, 01h
-    jz insDE
-    call moverPos ;Ver linea 406
+    add ccX, 01h                    ;para moverse a la derecha debe sumar X
+    call verificar_fruta            ;verifica si come fruta
+    cmp enF, 01h                    ;bool de fruta comida
+    jz insDE                        ;insertar a derecha
+    call moverPos 
     call moverSerpiente
     ret
     insDE:
     mov enF, 00h
-    call ingresarPos ;Ver linea 406
+    call ingresarPos 
     call moverSerpiente
     ret
     
     exit2:
-    call fin_juego
+    call fin_juego                  ;fin de juego
     ret
 
     regreso:
-    CALL mostrarRegreso
+    CALL mostrarRegreso             ;mensaje de que no puede regresar
     RET
 leer_teclado endp
 
@@ -693,7 +690,8 @@ imprimirSer proc ;imprime serpiente en pantalla
     CALL reset
     RET
 imprimirSer endp
-moverPos proc ;mueve las posiciones de la sepiente
+
+moverPos proc               ;mueve las posiciones de la sepiente
     CALL guardar
     CALL clean
     
@@ -701,7 +699,7 @@ moverPos proc ;mueve las posiciones de la sepiente
     MOV DI , BX
     MOV SI , BX
     SUB SI , 2
-    moverCic: ; Ciclo que mueve las posiciones
+    moverCic:               ; Ciclo que mueve las posiciones
     CMP SI , 0
     JZ moverCicFin
     
@@ -716,7 +714,7 @@ moverPos proc ;mueve las posiciones de la sepiente
     MOV posLis[DI] , AL
     
     JMP moverCic
-    moverCicFin: ; coloca los valore nuevos de la cabeza
+    moverCicFin:            ; coloca los valore nuevos de la cabeza
     DEC DI
     MOV AL , ccY
     MOV posLis[DI] , AL
@@ -728,11 +726,13 @@ moverPos proc ;mueve las posiciones de la sepiente
     CALL reset
     RET
 moverPos endp
+
 ingresarPos proc ;inserta 2 posiciones m?s a la lista
     ADD posSiz , 2
     CALL moverPos
     RET
 ingresarPos endp
+
 guardar proc ; guarda los registros para evitar perder datos
     MOV regA , AX
     MOV regB , BX
@@ -740,6 +740,7 @@ guardar proc ; guarda los registros para evitar perder datos
     MOV regD , DX
     RET
 guardar endp
+
 reset proc ; inserta los valores guardados en los registros
     MOV AX , regA
     MOV BX , regB
@@ -747,6 +748,7 @@ reset proc ; inserta los valores guardados en los registros
     MOV DX , regD
     RET
 reset endp
+
 clean proc ;limpia los registros
     XOR AX ,AX
     XOR BX ,BX
@@ -754,6 +756,7 @@ clean proc ;limpia los registros
     XOR DX ,DX
     RET
 clean endp
+
 killbug proc
     call guardar
     call clean
@@ -775,5 +778,6 @@ killbug proc
     call reset
     RET
 killbug endp
+
 program endp
 end program
