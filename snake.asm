@@ -6,7 +6,7 @@
     mpX DB 'Ingrese dimension horizontal: $'
     mpY DB 'Ingrese dimension vertical: $'
     minsj DB 'W = arriba, S = abajo, D = derecha, A = izquierda (DESACTIVE MAYUS)$'
-    mer1 DB 'No se puede regresar$'
+    msjgana DB 'Felicidades! Alcanzaste el maximo punteo!'
     mer2 DB 'Fin de Juego$'
     mer3 DB 'Presione cualquier tecla para continuar...$'
     mer4 DB 'No puede regresar$'
@@ -26,6 +26,7 @@
     ;punteo
     spunteo DB 'Puntos: $'
     score DB 00h
+    gana DB 00h             ;bool para ver si llega a puntuaci?n m?xima
     
     diez DB 10d
     residuo DB ?
@@ -65,7 +66,8 @@ program proc far
     pantalla:
     call impresion_pantalla
     call leer_teclado
-
+    cmp gana, 01h       ; si llega a la puntuacion maxima, gana
+    jz gana_juego
     cmp fin, 01h        ; si pierde, termina el programa
     jz fin_programa 
     jmp pantalla
@@ -74,6 +76,14 @@ program proc far
     fin_programa:
     mov ah, 4ch
     int 21h
+
+    gana_juego:
+    call limpiar
+    mov dl, offset msjgana
+    mov ah, 09h
+    int 21h
+    call presskey
+    jmp fin_programa
 
 limpiar proc
     mov ax, 0003h   ;limpia la pantalla
@@ -539,7 +549,15 @@ verificar_fruta proc
     sumar_score:
     mov enF, 01h        ;bandera de comer fruta
     call puntos
+    
+    cmp score, 99d
+    jz max_score
+    
     call generar_fruta
+    ret
+    
+    max_score:
+    mov gana, 01h
     ret
 verificar_fruta endp
 
